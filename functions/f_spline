@@ -1,0 +1,53 @@
+#function to make the spline data, stratified per modality
+f_spline <- function(.data, modality, lower_bound, upper_bound){
+    # Subset data
+    dat_tmp <- filter(.data, group == modality)
+    
+    # Fit model
+    #time is time until status, when end of study reason is death, this is automatically time until death
+    #with pspline you fit a smooth curve on this data, df stands for degrees of freedom, we choose 4 based on:
+    #https://stats.stackexchange.com/questions/152303/interpretation-of-the-hazard-ratio-in-a-spline-model-on-continuous-exposures
+    fit <- coxph(Surv(t_start, t_stop, endpt) ~ ns(ultra_fil_rate, df = 4) +
+                     #Adjustment is necessary for correct HR, not for relation between groups
+                     age +
+                     sex +
+                     dial_vintage +
+                     sbp_pre +
+                     phos_pre_mmoll, #+
+                     hb_pre_mmoll +
+                     SCR_MH_CHF_OCCUR +
+                     SCR_MH_MYO_OCCUR +
+                     SCR_MH_DIAB_OCCUR, 
+                 data = dat_tmp,
+                 cluster = id)
+    
+    # Get grid of observed values, with centred values for non x-axis variables
+    dat_grid <- data.frame(ultra_fil_rate = seq(lower_bound, upper_bound, length.out = 500),
+                           age = mean(dat_tmp[["age"]]),
+                           sex = 0,
+                           dial_vintage = mean(dat_tmp[["dial_vintage"]]),
+                           sbp_pre = mean(dat_tmp[["sbp_pre"]]),
+                           phos_pre_mmoll = mean(dat_tmp[["phos_pre_mmoll"]]),
+                           SCR_MH_CHF_OCCUR = 0,
+                           SCR_MH_MYO_OCCUR = 0,
+                           # SCR_MH_CABG_OCCUR = 0,
+                           SCR_MH_DIAB_OCCUR = 0,
+                           # baseline_bmi = mean(dat_tmp[["baseline_bmi"]]),
+                            hb_pre_mmoll = mean(dat_tmp[["hb_pre_mmoll"]])
+                           )
+    
+    # Get predictions for grid
+    lst_predictions <- predict(fit, 
+                               newdata = dat_grid,
+                               se.fit = TRUE)
+    
+    # Add predictions to grid
+    dat_grid %<>% mutate(b = lst_predictions[[1]],
+                         se = lst_predictions[[2]],
+                         hr = exp(b),
+                         ll = exp(b - 1.96 * se),
+                         ul = exp(b + 1.96 * se))
+    
+    # Return data
+    return(dat_grid)
+}

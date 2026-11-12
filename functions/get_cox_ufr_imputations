@@ -1,0 +1,23 @@
+get_cox_ufr_imputations <- function(data, 
+                                    n_imp, 
+                                    lower_bound, 
+                                    upper_bound,
+                                    ultrafil_var = "ultra_fil_rate",
+                                    weights = TRUE) {
+    bind_rows(lapply(1:n_imp, \(x) {
+        # Get imputation data
+        dat_imp <- filter(data, .imp == x)
+        
+        # Get HD spline data
+        dat_hd <- cox_spline_ufr(dat_imp, ultrafil_var = ultrafil_var, modality = "0", lower_bound, upper_bound, weights = TRUE) %>%
+            mutate(group = "HD")
+        
+        # Get HDF spline data
+        dat_hdf <- cox_spline_ufr(dat_imp, ultrafil_var = ultrafil_var, modality = "1", lower_bound, upper_bound, weights = TRUE) %>%
+            mutate(group = "HDF")
+        
+        # Combine and add imputation indicator
+        bind_rows(dat_hd, dat_hdf) %>%
+            mutate(.imp = x)
+    }))
+}

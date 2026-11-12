@@ -1,0 +1,45 @@
+plot_lmm_ultra <- function(data = pooled_pred_ultra){
+                           
+        plot <- ggplot(data, aes(x = x, y = predicted_mean, color = factor(group), group = factor(group))) +
+    #line per group including size
+    geom_line(size = 1) +
+    #measurementpoints
+    geom_point(size = 2) +
+    #shadow for confidence interval, alpha 0.2 makes it semi transparent
+    #color = NA no border around confidence interval
+    geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = factor(group)),
+                alpha = 0.2, color = NA) +
+    labs(
+        x = "Time (months)",
+        y = "Ultrafiltration rate (UFR) in mL/kg/hour",
+        #no text like "group" above the legend
+        color = NULL,
+        fill = NULL
+    ) +
+    scale_color_manual(
+        values = c("0" = "#648FFF", "1" = "#FE6100"),
+        labels = c("0" = "High-flux hemodialysis", "1" = "High-dose hemodiafiltration")
+    ) +
+    scale_fill_manual(
+        values = c("0" = "#648FFF", "1" = "#FE6100"),
+        labels = c("0" = "High-flux hemodialysis", "1" = "High-dose hemodiafiltration")
+    ) +
+    #make y-axis go from 0 to 20
+    scale_y_continuous(limits = c(0, 15)) +
+    theme_minimal(base_size = 12) +
+    theme(
+        panel.border = element_rect(color = "black", size = 1), #black line surrounding plot
+        legend.position = "bottom",
+        legend.text = element_text(size = 14),
+        panel.grid.major.x = element_blank(),  # no vertical lines
+        panel.grid.minor.x = element_blank(),  
+        panel.grid.major.y = element_line(color = "grey80"),  # horiztontal lines
+        panel.grid.minor.y = element_line(color = "grey80"), #fine horizontal lines inbetween 
+        axis.ticks = element_line(color = "black"),
+        #plot.background = element_blank(),
+        axis.title.y.left = element_text(size = 14),
+        axis.title.x = element_text(size = 14),
+        
+    )
+    return(plot)
+}

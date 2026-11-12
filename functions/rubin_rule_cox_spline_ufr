@@ -1,0 +1,30 @@
+rubin_rule_cox_spline_ufr <- function(data, var, center_at) {
+    
+    #with approx function, you return a list of points which linearly interpolate given data points
+    #x and y are the numeric vectorns giving the coordinaties of the points to be interpolated
+    #xout is an optional set of numeric values specifying where interpolation is to take plac
+    
+    
+    
+    data <- data %>%
+        group_by(group, .imp) %>%
+        mutate(
+            center = approx(.data[[var]], y = b, xout = center_at)$y) %>%
+        ungroup() %>%
+        arrange(.data[[var]], group) %>% 
+        group_by(.data[[var]], group) %>% 
+        mutate(
+            theta = mean(b - center),
+            vw = mean(se^2),
+            vb = var(b-center)
+        ) %>%
+        slice(1L) %>%
+        ungroup() %>%
+        mutate(
+            se_total = sqrt(vw + vb + vb/10),
+            hr = exp(theta),
+            ll = exp(theta - 1.96 * se_total),
+            ul = exp(theta + 1.96 * se_total)
+        )
+    
+}

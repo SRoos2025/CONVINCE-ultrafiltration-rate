@@ -1,0 +1,62 @@
+f_plot <- function(dat, y_limits = c(0,20), center_val){
+    # Plot data
+    p <- ggplot(dat_plot,
+                aes(x = ultra_fil_rate,
+                    y = hr,
+                    ymin = ll,
+                    ymax = ul,
+                    colour = group,
+                    fill = group)) +
+        # Geometries
+        geom_hline(yintercept = 1,
+                   linetype = "dashed",
+                   colour = "black",
+                   alpha = 0.3) +
+        geom_ribbon(alpha = 0.3,
+                    colour = NA) +
+        geom_line(size = 1) + 
+        # Axis labels
+        labs(
+            y = "Adjusted* Hazard Ratio of mortality",
+            x = "Ultrafiltration rate (UFR) in mL/kg/hour",
+            colour = NULL,
+            fill = NULL,
+            caption = "* Adjusted for sex, age, comorbidities (heart failure, diabetes mellitus, history of myocardial infarction),  dialysis vintage, systolic blood pressure and pre-dialysis serum phosphate and hemoglobin"
+        ) +
+        
+        scale_colour_manual(values = c("#648FFF", "#FE6100"), labels = c("HD" = "High-flux hemodialysis",
+                                                                         "HDF" = "High-dose hemodiafiltration")) +
+        scale_fill_manual(values = c("#648FFF", "#FE6100"), 
+                          labels = c("HD" = "High-flux hemodialysis",
+                                     "HDF" = "High-dose hemodiafiltration"))+
+        scale_x_continuous(expand = c(0, 0))+
+        coord_cartesian(ylim = y_limits) +
+        geom_vline(xintercept = center_val, 
+                   linetype = "dashed", 
+                   color = "black", 
+                   alpha = 0.4) +
+        scale_x_continuous(
+            sec.axis = sec_axis(~.,
+                                breaks = center_val,
+                                labels = paste0("Reference at ", center_val))) +
+        
+        # Theme styling
+        theme_bw() +
+        theme(
+            panel.grid.major.y = element_line(color = "grey80"),
+            panel.grid.minor = element_blank(),
+            legend.position = "bottom",
+            legend.text = element_text(size = 14),
+            axis.title.x.top = element_text(colour = "black"),
+            axis.title.y.left = element_text(size = 14),
+            axis.title.x = element_text(size = 14),
+            panel.border = element_rect(color = "black", size = 1),
+            panel.grid.major.x = element_blank(),
+            panel.grid.minor.y = element_line(color = "grey80"),
+            axis.ticks = element_line(color = "black"),
+        )
+    
+    
+    # Return plot
+    return(p)
+}

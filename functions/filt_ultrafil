@@ -1,0 +1,6 @@
+#fit linear mixed model for ultrafiltration rate
+#visit time can be either a factor or not
+fit_ultrafil <- function(data) {
+    lmer(ultra_fil_rate ~ visit_time*group + baseline_ultra_fil_rate + (1 |id), 
+         data = data)
+}

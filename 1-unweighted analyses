@@ -1,0 +1,110 @@
+#first analysis script of UFR analyses CONVINCE
+#by S. Roos
+#last edited on 12-Nov-2026
+#unweighted analyses 
+#we use the imputed dataset without weights, as a result of script 3 from the nutritional project: (https://github.com/SRoos2025/CONVINCE-nutrition)
+
+pacman::p_load("conflicted", # Package conflicts 
+               "here", # Relative directories 
+               "tidyverse", # Data wrangling 
+               "patchwork", # Adding plots together
+               "magrittr",
+               "stats", #for glm model
+               "mice", # to pool outcomes using Rubins rules
+               "purrr",
+               "lme4", #linear mixed models
+               "ggeffects", # to predict values from linear mixed models
+               "broom.mixed", # supports mixed models, returns tidy output
+               "ggplot2",# to plot the predicted values) # Printing tables to word ) 
+               "survival",#to use cox and penalized spline) 
+               "gtsummary",
+               "splines")#to make a formatted table )
+#solve conflicts 
+conflicts_prefer(dplyr::filter) # Between dplyr & stats 
+conflicts_prefer(dplyr::select) # Between dplyr & MASS
+conflicts_prefer(lmerTest::lmer) #between lmerTest and lme4
+
+#set working directory 
+path <- "..."
+
+setwd("...")
+
+#load data 
+load(paste0(path, "data_unweighted.Rdata"))
+
+walk(list.files(paste0(path, "R/funs_ultra")), ~ source(paste0(path, "R/funs_ultra/", .x)))
+
+data_unweighted<- set_visit_time(data_unweighted, as_factor = TRUE) 
+
+data_unweighted <- set_endpt(data_unweighted)
+
+#make a list for each dataframe of each imputed dataset
+imp_list <- data_unweighted %>% 
+    group_split(.imp)
+
+#apply LMM for each imputed dataframe in the list
+fits_ultra <- map(imp_list, fit_ultrafil)
+#pool using Rubins rules
+pooled_ultra <- pool(fits_ultra)
+#summarize
+summary(pooled_ultra, conf.int = TRUE)
+
+#plot for ultrafiltration
+pred_list_ultra <- map(fits_ultra, ~ ggpredict(.x, terms = c("visit_time", "group")) %>% as.data.frame())
+
+preds_ultra <- bind_rows(pred_list_ultra, .id = ".imp")  # voegt kolom .imp toe = welke imputatie
+m <- length(fits_ultra)                             # aantal imputaties
+
+pooled_pred_ultra <- pooled_pred(preds_ultra)
+
+
+plot_ultra <- plot_lmm_ultra(data = pooled_pred_ultra)
+
+plot_ultra
+
+ggsave("figure_1_ultra_poster.png", plot_ultra,
+       width = 7, height = 5)
+
+# Function to get spline data
+
+
+# Determine lower and upper bound in data
+# we set the upperbound for UF to 20 because the values above 20 are so extreme they shift the plot too much (create hazards >100)
+lower_bound <- min(data_unweighted[["ultra_fil_rate"]])
+upper_bound <- 20
+
+# Get output for each imputation
+dat_plot <- bind_rows(lapply(1:10, \(x){
+    # Get imputation data
+    dat_imp <- filter(data_unweighted, .imp == x)
+    
+    # Get HD spline data
+    dat_hd <- f_spline(dat_imp, "0", lower_bound, upper_bound) %>%
+        # Add group information
+        mutate(group = "HD")
+    
+    # Get HDF spline data
+    dat_hdf <- f_spline(dat_imp, "1", lower_bound, upper_bound) %>%
+        # Add group informatoin
+        mutate(group = "HDF")
+    
+    # Add data together
+    dat_spline <- bind_rows(dat_hd, dat_hdf) %>%
+        # Add imputation indicator
+        mutate(.imp = x)
+    
+    # Return final data
+    return(dat_spline)
+}))
+
+dat_plot <- rubin_rule_cox_spline_ufr(dat_plot, var = "ultra_fil_rate", center_at = 8)
+
+
+# Function for figure
+plot_spline <- f_plot(dat_plot, center_val = 8)
+
+plot_spline
+ggsave("plot_spine_poster.png", plot_spline, width= 12, height = 5)
+
+
+
